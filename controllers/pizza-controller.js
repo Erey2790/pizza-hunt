@@ -63,4 +63,4 @@ updatePizza({ params, body }, res) {
 
 };
 
-module.exports = pizzaController
+module.exports = pizzaController;
