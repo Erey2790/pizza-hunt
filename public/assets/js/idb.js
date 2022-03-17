@@ -9,4 +9,77 @@ request.onupgradeneeded = function(event) {
     const db = event.target.result;
     // create an object store (table) called `new_pizza`, set it to have an auto incrementing primary key of sorts
     db.createObjectStore('new_pizza', { autoIncrement: true });
+};
+
+// upon a successful
+request.onsuccess = function(event) {
+    // when db is successfully created with its objec store (from onupgradedneeded event above or simply established a connection, save reference to db in global variable)
+    db = event.target.result;
+
+    // check if app is online, if yes run uploadPIzza() function to send all local db data to api
+    if (navigator.onLine) {
+        // we havent created this yet, but we will soon, so lets comment it out for now
+        uploadPizza();
+    }
+};
+
+request.onerror = function(event) {
+    // log error here
+    console.log(event.target.errorCode);
+};
+
+// this function will be executed if we attempt to submnit a new pizza and theres no internet connection
+function saveRecord(record) {
+    // open a new transaction with the database with read and write permissions
+    const transaction = db.transaction(['new_pizza'], 'readwrite');
+
+    // add record to your store with add method
+    pizzaObjectStore.add(record);
+};
+
+function uploadPizza() {
+    // open a transaction on your db
+    const transaction = db.transaction(['new_pizza'], 'readwrite');
+
+    // access your object store
+    const pizzaObjectStore = transaction.objectStore('new_ pizza');
+
+    // get all records from store and set to a variable
+    const getAll = pizzaObjectStore.getAll();
+
+    // more to come...
+    // upon a successful .getAll() execution, run this function
+    getAll.onsuccess = function() {
+        // if there was data in indexedDb's store, lets send it to the api server
+        if (getAll.result.length > 0) {
+            fetch('/api/pizzas',{
+                method: 'POST',
+                body: JSON.stringify(getAll.results),
+                headers: {
+                    Accept: 'application/json, text/plain, */*',
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(serverResponse => {
+                if (serverResponse.message) {
+                    throw new Error(serverResponse);
+                }
+                // open one more transaction
+                const transaction = db.transaction(['new_pizza'], 'readwrite');
+                // access the new_pizza object store
+                const pizzaObjectStore = transcation.objectStore('new_pizza');
+                // clear all items in your store
+                pizzaObjectStore.clear();
+
+                alert('All saved pizza has been submitted!');
+            })
+            .catch(err => {
+                console.log(err);
+            });
+        }
+    }
 }
+
+// listen for app coming back online
+window.addEventListener('online', uploadPizza);
